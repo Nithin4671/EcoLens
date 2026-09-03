@@ -166,6 +166,10 @@ def analyze_waste(image_bytes: bytes, mime_type: str):
                 return {"items": items}
 
             except Exception as exc:
+                print(
+                    f"Gemini model {model} failed "
+                    f"on attempt {attempt + 1}: {exc}"
+                )
                 last_error = exc
 
     raise RuntimeError(
