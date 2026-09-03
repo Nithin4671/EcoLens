@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Eco Lens — Scan & Sort</title>
+<style>
+  :root {
+    --moss: #2F4A3C;
+    --moss-dark: #1C2F26;
+    --leaf: #6FA85E;
+    --paper: #F4F2EA;
+    --soil: #6B5744;
+    --wet-bin: #4A7C59;
+    --dry-bin: #3D6B93;
+    --recycle-bin: #2E7D8C;
+    --hazard-bin: #A63D2F;
+    --ewaste-bin: #6B4E8C;
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--moss-dark);
+    color: var(--paper);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, var(--moss) 0%, var(--moss-dark) 340px);
+  }
+
+  header { padding: 28px 24px 18px; }
+
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark { width: 34px; height: 34px; flex-shrink: 0; }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--paper);
+  }
+
+  .tagline {
+    margin: 6px 0 0;
+    font-size: 14.5px;
+    color: rgba(244,242,234,0.68);
+    line-height: 1.5;
+    max-width: 34ch;
+  }
+
+  main {
+    flex: 1;
+    padding: 4px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .stage {
+    background: var(--paper);
+    border-radius: var(--radius);
+    color: var(--moss-dark);
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+  }
+
+  .capture-zone {
+    position: relative;
+    aspect-ratio: 4/5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: repeating-linear-gradient(135deg, #EDEAE0, #EDEAE0 12px, #E6E2D5 12px, #E6E2D5 24px);
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .capture-zone img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .capture-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    color: var(--soil);
+    padding: 24px;
+    text-align: center;
+  }
+
+  .capture-placeholder svg { width: 52px; height: 52px; opacity: 0.55; }
+  .capture-placeholder .cta-label { font-size: 16px; font-weight: 600; color: var(--moss-dark); }
+  .capture-placeholder .cta-sub { font-size: 13px; color: var(--soil); max-width: 24ch; }
+
+  input[type="file"] { display: none; }
+
+  .action-row { display: flex; gap: 10px; padding: 14px; }
+
+  button {
+    font-family: inherit;
+    border: none;
+    border-radius: 999px;
+    padding: 14px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.5; cursor: default; }
+
+  .btn-primary { flex: 1; background: var(--leaf); color: var(--moss-dark); }
+  .btn-secondary { background: transparent; color: var(--moss-dark); border: 1.5px solid rgba(28,47,38,0.25); }
+
+  .status {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: rgba(244,242,234,0.08);
+    border-radius: var(--radius);
+    font-size: 14px;
+    color: rgba(244,242,234,0.85);
+  }
+  .status.visible { display: flex; }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(244,242,234,0.25);
+    border-top-color: var(--leaf);
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .result {
+    display: none;
+    background: var(--paper);
+    color: var(--moss-dark);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+  }
+  .result.visible { display: block; animation: rise 0.35s ease; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .bin-banner { padding: 20px 22px; color: var(--paper); display: flex; align-items: center; gap: 14px; }
+  .bin-icon { width: 40px; height: 40px; flex-shrink: 0; opacity: 0.95; }
+  .bin-banner .bin-name { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .bin-banner .item-name { font-size: 13.5px; opacity: 0.85; margin-top: 2px; }
+
+  .result-body { padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 16px; }
+  .field-label { font-size: 11.5px; font-weight: 700; color: var(--soil); margin: 0 0 4px; }
+  .field-value { font-size: 15px; line-height: 1.55; color: var(--moss-dark); margin: 0; }
+
+  .confidence-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--soil); }
+  .confidence-track { flex: 1; height: 5px; border-radius: 3px; background: rgba(107,87,68,0.18); overflow: hidden; }
+  .confidence-fill { height: 100%; background: var(--leaf); border-radius: 3px; }
+
+  .error-box {
+    display: none;
+    background: rgba(166,61,47,0.15);
+    border: 1px solid rgba(166,61,47,0.4);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    font-size: 13.5px;
+    color: #F2CFC7;
+    line-height: 1.5;
+  }
+  .error-box.visible { display: block; }
+
+  .counter-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: rgba(244,242,234,0.07);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: rgba(244,242,234,0.75);
+  }
+  .counter-strip strong { color: var(--paper); font-size: 15px; }
+
+  footer { text-align: center; padding: 6px 20px 22px; font-size: 11.5px; color: rgba(244,242,234,0.35); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" fill="none">
+        <path d="M20 4C11 4 4 11 4 20c0 9 7 16 16 16 1.5 0 3-.2 4.4-.6C21.5 33 19 28.5 19 23c0-8 6-14 14-14 1 0 2 .1 3 .3C33.5 6.6 27.2 4 20 4z" fill="#6FA85E"/>
+        <path d="M19 23c0-8 6-14 14-14-1.5 7-7 12.6-14 14z" fill="#4A7C59"/>
+      </svg>
+      <h1>Eco Lens</h1>
+    </div>
+    <p class="tagline">Snap a photo of any waste item and get instant sorting guidance.</p>
+  </header>
+
+  <main>
+    <div class="stage">
+      <label class="capture-zone" id="captureZone">
+        <input type="file" id="fileInput" accept="image/*" capture="environment" />
+        <div class="capture-placeholder" id="placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 8a2 2 0 0 1 2-2h1.2a1 1 0 0 0 .87-.5l.6-1A2 2 0 0 1 10.4 3.5h3.2a2 2 0 0 1 1.73 1L15.9 5.5a1 1 0 0 0 .87.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/>
+            <circle cx="12" cy="12.5" r="3.4"/>
+          </svg>
+          <div class="cta-label">Tap to scan an item</div>
+          <div class="cta-sub">Use your camera or upload a photo</div>
+        </div>
+        <img id="preview" style="display:none;" alt="Captured item" />
+      </label>
+      <div class="action-row">
+        <button class="btn-secondary" id="retakeBtn" style="display:none;">Retake</button>
+        <button class="btn-primary" id="scanBtn" disabled>Identify item</button>
+      </div>
+    </div>
+
+    <div class="status" id="statusBox">
+      <div class="spinner"></div>
+      <span id="statusText">Analyzing image…</span>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="result" id="resultBox">
+      <div class="bin-banner" id="binBanner">
+        <svg class="bin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M4 7h16M9 7V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V7m-9 0 .9 12.2A2 2 0 0 0 8.9 21h6.2a2 2 0 0 0 2-1.8L18 7"/>
+        </svg>
+        <div>
+          <div class="bin-name" id="binName">—</div>
+          <div class="item-name" id="itemName">—</div>
+        </div>
+      </div>
+      <div class="result-body">
+        <div>
+          <p class="field-label">HOW TO PREP IT</p>
+          <p class="field-value" id="tipText">—</p>
+        </div>
+        <div class="confidence-row">
+          <span id="confidenceLabel">Confidence</span>
+          <div class="confidence-track"><div class="confidence-fill" id="confidenceFill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="counter-strip">
+      <span>Items scanned this session</span>
+      <strong id="scanCount">0</strong>
+    </div>
+  </main>
+
+  <footer>Eco Lens · AI-assisted, always double-check local recycling rules</footer>
+</div>
+
+<script>
+// Point this at wherever your FastAPI backend is running.
+// Local dev default matches: uvicorn main:app --reload --port 8000
+const API_BASE_URL = "http://localhost:8000";
+
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const placeholder = document.getElementById('placeholder');
+const scanBtn = document.getElementById('scanBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const statusBox = document.getElementById('statusBox');
+const errorBox = document.getElementById('errorBox');
+const resultBox = document.getElementById('resultBox');
+const binBanner = document.getElementById('binBanner');
+const binName = document.getElementById('binName');
+const itemName = document.getElementById('itemName');
+const tipText = document.getElementById('tipText');
+const confidenceFill = document.getElementById('confidenceFill');
+const confidenceLabel = document.getElementById('confidenceLabel');
+const scanCountEl = document.getElementById('scanCount');
+
+let currentFile = null;
+let scanCount = 0;
+
+const BIN_STYLES = {
+  wet:        { color: 'var(--wet-bin)',     label: 'Wet / Organic Waste' },
+  dry:        { color: 'var(--dry-bin)',     label: 'Dry Waste' },
+  recyclable: { color: 'var(--recycle-bin)', label: 'Recyclable' },
+  hazardous:  { color: 'var(--hazard-bin)',  label: 'Hazardous Waste' },
+  ewaste:     { color: 'var(--ewaste-bin)',  label: 'E-Waste' },
+};
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  currentFile = file;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    preview.src = ev.target.result;
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+    scanBtn.disabled = false;
+    retakeBtn.style.display = 'inline-block';
+    resultBox.classList.remove('visible');
+    errorBox.classList.remove('visible');
+  };
+  reader.readAsDataURL(file);
+});
+
+retakeBtn.addEventListener('click', () => {
+  fileInput.value = '';
+  currentFile = null;
+  preview.style.display = 'none';
+  placeholder.style.display = 'flex';
+  scanBtn.disabled = true;
+  retakeBtn.style.display = 'none';
+  resultBox.classList.remove('visible');
+  errorBox.classList.remove('visible');
+});
+
+scanBtn.addEventListener('click', async () => {
+  if (!currentFile) return;
+  setLoading(true);
+  errorBox.classList.remove('visible');
+  resultBox.classList.remove('visible');
+
+  try {
+    const result = await classifyImage(currentFile);
+    renderResult(result);
+    scanCount += 1;
+    scanCountEl.textContent = scanCount;
+  } catch (err) {
+    console.error(err);
+    errorBox.textContent = "Couldn't analyze that image: " + err.message + ". Check the backend is running and try again.";
+    errorBox.classList.add('visible');
+  } finally {
+    setLoading(false);
+  }
+});
+
+function setLoading(isLoading) {
+  scanBtn.disabled = isLoading;
+  statusBox.classList.toggle('visible', isLoading);
+}
+
+async function classifyImage(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(`${API_BASE_URL}/analyze`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = `Server responded with ${response.status}`;
+    try {
+      const errJson = await response.json();
+      detail = errJson.detail || detail;
+    } catch (_) {}
+    throw new Error(detail);
+  }
+
+  const data = await response.json();
+  return data.result;
+}
+
+function renderResult(result) {
+  const binKey = (result.bin || 'dry').toLowerCase();
+  const style = BIN_STYLES[binKey] || BIN_STYLES.dry;
+
+  binBanner.style.background = style.color;
+  binName.textContent = style.label;
+  itemName.textContent = result.item || 'Unknown item';
+  tipText.textContent = result.tip || 'No specific guidance available.';
+
+  const conf = Math.max(0, Math.min(100, Number(result.confidence) || 70));
+  confidenceFill.style.width = conf + '%';
+  confidenceLabel.textContent = `Confidence: ${conf}%`;
+
+  resultBox.classList.add('visible');
+}
+</script>
+</body>
+</html>
