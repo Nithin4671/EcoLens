@@ -116,7 +116,7 @@ def analyze_waste(image_bytes: bytes, mime_type: str):
     { "items": [ {item, material, bin, category, recyclable, condition, tip, confidence}, ... ] }
     """
     response = client.models.generate_content(
-        model="gemini-3.7-flash",
+        model="gemini-3.8-flash",
         contents=[
             PROMPT,
             {
