@@ -146,29 +146,45 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .result {
+  .results-list {
     display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .results-list.visible { display: flex; }
+
+  .results-heading {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(244,242,234,0.6);
+    padding: 0 4px;
+  }
+
+  .result-card {
     background: var(--paper);
     color: var(--moss-dark);
     border-radius: var(--radius);
     overflow: hidden;
     box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+    animation: rise 0.35s ease;
   }
-  .result.visible { display: block; animation: rise 0.35s ease; }
 
   @keyframes rise {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .bin-banner { padding: 20px 22px; color: var(--paper); display: flex; align-items: center; gap: 14px; }
-  .bin-icon { width: 40px; height: 40px; flex-shrink: 0; opacity: 0.95; }
-  .bin-banner .bin-name { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .bin-banner { padding: 18px 22px; color: var(--paper); display: flex; align-items: center; gap: 14px; }
+  .bin-icon { width: 36px; height: 36px; flex-shrink: 0; opacity: 0.95; }
+  .bin-banner .bin-name { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
   .bin-banner .item-name { font-size: 13.5px; opacity: 0.85; margin-top: 2px; }
 
-  .result-body { padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 16px; }
+  .result-body { padding: 18px 22px 20px; display: flex; flex-direction: column; gap: 14px; }
   .field-label { font-size: 11.5px; font-weight: 700; color: var(--soil); margin: 0 0 4px; }
-  .field-value { font-size: 15px; line-height: 1.55; color: var(--moss-dark); margin: 0; }
+  .field-value { font-size: 14.5px; line-height: 1.55; color: var(--moss-dark); margin: 0; }
+
+  .meta-row { display: flex; gap: 16px; font-size: 12.5px; color: var(--soil); }
+  .meta-row span strong { color: var(--moss-dark); }
 
   .confidence-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--soil); }
   .confidence-track { flex: 1; height: 5px; border-radius: 3px; background: rgba(107,87,68,0.18); overflow: hidden; }
@@ -211,7 +227,7 @@
       </svg>
       <h1>Eco Lens</h1>
     </div>
-    <p class="tagline">Snap a photo of any waste item and get instant sorting guidance.</p>
+    <p class="tagline">Snap a photo of your waste — one item or a mixed pile — and get sorting guidance for each.</p>
   </header>
 
   <main>
@@ -223,14 +239,14 @@
             <path d="M4 8a2 2 0 0 1 2-2h1.2a1 1 0 0 0 .87-.5l.6-1A2 2 0 0 1 10.4 3.5h3.2a2 2 0 0 1 1.73 1L15.9 5.5a1 1 0 0 0 .87.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/>
             <circle cx="12" cy="12.5" r="3.4"/>
           </svg>
-          <div class="cta-label">Tap to scan an item</div>
+          <div class="cta-label">Tap to scan your waste</div>
           <div class="cta-sub">Use your camera or upload a photo</div>
         </div>
-        <img id="preview" style="display:none;" alt="Captured item" />
+        <img id="preview" style="display:none;" alt="Captured items" />
       </label>
       <div class="action-row">
         <button class="btn-secondary" id="retakeBtn" style="display:none;">Retake</button>
-        <button class="btn-primary" id="scanBtn" disabled>Identify item</button>
+        <button class="btn-primary" id="scanBtn" disabled>Identify items</button>
       </div>
     </div>
 
@@ -241,26 +257,9 @@
 
     <div class="error-box" id="errorBox"></div>
 
-    <div class="result" id="resultBox">
-      <div class="bin-banner" id="binBanner">
-        <svg class="bin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M4 7h16M9 7V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V7m-9 0 .9 12.2A2 2 0 0 0 8.9 21h6.2a2 2 0 0 0 2-1.8L18 7"/>
-        </svg>
-        <div>
-          <div class="bin-name" id="binName">—</div>
-          <div class="item-name" id="itemName">—</div>
-        </div>
-      </div>
-      <div class="result-body">
-        <div>
-          <p class="field-label">HOW TO PREP IT</p>
-          <p class="field-value" id="tipText">—</p>
-        </div>
-        <div class="confidence-row">
-          <span id="confidenceLabel">Confidence</span>
-          <div class="confidence-track"><div class="confidence-fill" id="confidenceFill" style="width:0%"></div></div>
-        </div>
-      </div>
+    <div class="results-list" id="resultsList">
+      <div class="results-heading" id="resultsHeading">Found 0 items</div>
+      <!-- result cards get inserted here -->
     </div>
 
     <div class="counter-strip">
@@ -275,7 +274,7 @@
 <script>
 // Point this at wherever your FastAPI backend is running.
 // Local dev default matches: uvicorn main:app --reload --port 8000
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://ecolens-txlt.onrender.com";
 
 const fileInput = document.getElementById('fileInput');
 const preview = document.getElementById('preview');
@@ -284,13 +283,8 @@ const scanBtn = document.getElementById('scanBtn');
 const retakeBtn = document.getElementById('retakeBtn');
 const statusBox = document.getElementById('statusBox');
 const errorBox = document.getElementById('errorBox');
-const resultBox = document.getElementById('resultBox');
-const binBanner = document.getElementById('binBanner');
-const binName = document.getElementById('binName');
-const itemName = document.getElementById('itemName');
-const tipText = document.getElementById('tipText');
-const confidenceFill = document.getElementById('confidenceFill');
-const confidenceLabel = document.getElementById('confidenceLabel');
+const resultsList = document.getElementById('resultsList');
+const resultsHeading = document.getElementById('resultsHeading');
 const scanCountEl = document.getElementById('scanCount');
 
 let currentFile = null;
@@ -316,7 +310,7 @@ fileInput.addEventListener('change', (e) => {
     placeholder.style.display = 'none';
     scanBtn.disabled = false;
     retakeBtn.style.display = 'inline-block';
-    resultBox.classList.remove('visible');
+    resultsList.classList.remove('visible');
     errorBox.classList.remove('visible');
   };
   reader.readAsDataURL(file);
@@ -329,7 +323,7 @@ retakeBtn.addEventListener('click', () => {
   placeholder.style.display = 'flex';
   scanBtn.disabled = true;
   retakeBtn.style.display = 'none';
-  resultBox.classList.remove('visible');
+  resultsList.classList.remove('visible');
   errorBox.classList.remove('visible');
 });
 
@@ -337,12 +331,13 @@ scanBtn.addEventListener('click', async () => {
   if (!currentFile) return;
   setLoading(true);
   errorBox.classList.remove('visible');
-  resultBox.classList.remove('visible');
+  resultsList.classList.remove('visible');
 
   try {
-    const result = await classifyImage(currentFile);
-    renderResult(result);
-    scanCount += 1;
+    const data = await classifyImage(currentFile);
+    const items = (data.result && data.result.items) || [];
+    renderResults(items);
+    scanCount += items.length;
     scanCountEl.textContent = scanCount;
   } catch (err) {
     console.error(err);
@@ -376,25 +371,59 @@ async function classifyImage(file) {
     throw new Error(detail);
   }
 
-  const data = await response.json();
-  return data.result;
+  return response.json();
 }
 
-function renderResult(result) {
-  const binKey = (result.bin || 'dry').toLowerCase();
-  const style = BIN_STYLES[binKey] || BIN_STYLES.dry;
+function renderResults(items) {
+  resultsList.querySelectorAll('.result-card').forEach(el => el.remove());
 
-  binBanner.style.background = style.color;
-  binName.textContent = style.label;
-  itemName.textContent = result.item || 'Unknown item';
-  tipText.textContent = result.tip || 'No specific guidance available.';
+  resultsHeading.textContent = items.length === 1
+    ? 'Found 1 item'
+    : `Found ${items.length} items`;
 
-  const conf = Math.max(0, Math.min(100, Number(result.confidence) || 70));
-  confidenceFill.style.width = conf + '%';
-  confidenceLabel.textContent = `Confidence: ${conf}%`;
+  items.forEach((result) => {
+    const binKey = (result.bin || 'dry').toLowerCase();
+    const style = BIN_STYLES[binKey] || BIN_STYLES.dry;
+    const conf = Math.max(0, Math.min(100, Number(result.confidence) || 70));
 
-  resultBox.classList.add('visible');
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="bin-banner" style="background:${style.color}">
+        <svg class="bin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M4 7h16M9 7V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V7m-9 0 .9 12.2A2 2 0 0 0 8.9 21h6.2a2 2 0 0 0 2-1.8L18 7"/>
+        </svg>
+        <div>
+          <div class="bin-name">${style.label}</div>
+          <div class="item-name">${escapeHtml(result.item || 'Unknown item')}</div>
+        </div>
+      </div>
+      <div class="result-body">
+        <div>
+          <p class="field-label">HOW TO PREP IT</p>
+          <p class="field-value">${escapeHtml(result.tip || 'No specific guidance available.')}</p>
+        </div>
+        <div class="meta-row">
+          <span>Material: <strong>${escapeHtml(result.material || 'Unknown')}</strong></span>
+          <span>Condition: <strong>${escapeHtml(result.condition || 'Unknown')}</strong></span>
+        </div>
+        <div class="confidence-row">
+          <span>Confidence: ${conf}%</span>
+          <div class="confidence-track"><div class="confidence-fill" style="width:${conf}%"></div></div>
+        </div>
+      </div>
+    `;
+    resultsList.appendChild(card);
+  });
+
+  resultsList.classList.add('visible');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 </script>
 </body>
-</html>
+</html> 
