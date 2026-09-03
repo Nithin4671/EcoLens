@@ -115,31 +115,59 @@ def analyze_waste(image_bytes: bytes, mime_type: str):
     Sends an image to Gemini and returns:
     { "items": [ {item, material, bin, category, recyclable, condition, tip, confidence}, ... ] }
     """
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=[
-            PROMPT,
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": image_bytes,
-                }
-            },
-        ],
+
+    contents = [
+        PROMPT,
+        {
+            "inline_data": {
+                "mime_type": mime_type,
+                "data": image_bytes,
+            }
+        },
+    ]
+
+    # Try the preferred model first, then fall back if it is temporarily busy.
+    models = [
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.5-flash-lite",
+    ]
+
+    last_error = None
+
+    for model in models:
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=contents,
+                )
+
+                text = response.text.strip()
+
+                # Remove accidental markdown code fences
+                if text.startswith("```"):
+                    text = text.replace("```json", "").replace("```", "").strip()
+
+                parsed = json.loads(text)
+
+                items = parsed.get("items")
+
+                if not isinstance(items, list) or len(items) == 0:
+                    raise ValueError(
+                        f"No items found in Gemini response: {text}"
+                    )
+
+                items = [
+                    _apply_keyword_override(_fill_defaults(entry))
+                    for entry in items
+                ]
+
+                return {"items": items}
+
+            except Exception as exc:
+                last_error = exc
+
+    raise RuntimeError(
+        f"Gemini analysis failed after trying multiple models: {last_error}"
     )
-
-    text = response.text.strip()
-
-    # Remove accidental markdown code fences if Gemini adds them
-    if text.startswith("```"):
-        text = text.replace("```json", "").replace("```", "").strip()
-
-    parsed = json.loads(text)
-
-    items = parsed.get("items")
-    if not isinstance(items, list) or len(items) == 0:
-        raise ValueError(f"No items found in Gemini response: {text}")
-
-    items = [_apply_keyword_override(_fill_defaults(entry)) for entry in items]
-
-    return {"items": items}
